@@ -1,0 +1,25 @@
+{
+    "env": {
+        "node": true,
+        "browser": true,
+        "es6": true
+    },
+    "parser": "babel-eslint",
+    "plugins": [
+        "react",
+        "react-native"
+    ],
+    "extends": "airbnb",
+    "parserOptions": {
+        "ecmaFeatures": {
+            "jsx": true,
+            "modules": true
+        }
+    },
+    "rules": {
+        "react/jsx-filename-extension": [1, { "extensions": [".js", ".jsx"] }],
+        "object-curly-spacing": ["warn", "never"],
+        "max-len": ["warn", 120],
+        "semi": ["error", "never"]
+      }
+}
