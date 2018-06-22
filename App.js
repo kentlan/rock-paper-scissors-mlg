@@ -18,7 +18,7 @@ export default class App extends React.Component {
   }
 
   componentWillMount() {
-    auth.onAuthStateChanged(user => (({user}) ? this.setState({userId: user.uid}) : signIn()))
+    auth.onAuthStateChanged(user => (user ? this.setState({userId: user.uid}) : signIn()))
   }
 
   toggleHomeScreen = () => this.setState({homeScreen: !this.state.homeScreen})

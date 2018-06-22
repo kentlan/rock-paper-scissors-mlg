@@ -17,4 +17,7 @@ export const auth = firebase.auth()
 export const provider = new firebase.auth.FacebookAuthProvider()
 export const storage = firebase.storage()
 
-export const signIn = () => auth.signInAnonymously().catch(error => this.setState({authError: true}, console.error(error)))
+export const queueRef = database.ref('/queue/')
+
+export const signIn = () =>
+  auth.signInAnonymously().catch(error => console.error(error))

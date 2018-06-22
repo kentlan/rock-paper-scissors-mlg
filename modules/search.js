@@ -1,7 +1,7 @@
 import React, {Component} from 'react'
 import PropTypes from 'prop-types'
 import {StyleSheet, Text, View, Button} from 'react-native'
-import {database} from '../config/firebase'
+import {queueRef} from '../config/firebase'
 import Game from './game'
 
 const styles = StyleSheet.create({
@@ -23,14 +23,24 @@ export default class Search extends Component {
     gameFound: false,
   }
 
+  componentDidMount() {
+    queueRef.once('value').then(queue => (queue.val() ? this.joinQueue(queue.val()) : this.createQueue()))
+  }
+
+  componentWillUnmount() {
+    queueRef.once('value').then(queue => this.leaveQueue(queue.val()))
+  }
+
+  createQueue = () => queueRef.set([this.props.userId])
+
+  joinQueue = currentQueue => queueRef.set(currentQueue.concat(this.props.userId))
+
+  leaveQueue = (currentQueue = []) => {
+    const newQueue = currentQueue.filter(user => user !== this.props.userId)
+    queueRef.set(newQueue)
+  }
+
   render() {
-    database
-      .ref('rock-paper-scissor')
-      .once('value')
-      .then((snapshot) => {
-        console.log(snapshot.val())
-        // ...
-      })
     const {toggleHomeScreen, userId} = this.props
     const {gameFound} = this.state
     return (
@@ -39,7 +49,7 @@ export default class Search extends Component {
           <Game />
         ) : (
           <View>
-            <Text onPress={() => this.setState({gameFound: true})}>Searching for the opponents, mr {userId}</Text>
+            <Text>Searching for the opponents, mr {userId}</Text>
             <Button title="cancel" onPress={toggleHomeScreen} />
           </View>
         )}
