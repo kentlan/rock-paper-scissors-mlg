@@ -25,11 +25,11 @@ export default class App extends React.Component {
 
 
   render() {
-    const {homeScreen, authError} = this.state
+    const {homeScreen, authError, userId} = this.state
     return (
       <View style={styles.container}>
         {authError && <Text>oops, auth error, moron</Text>}
-        {homeScreen && <Button title="play" onPress={this.toggleHomeScreen} />}
+        {homeScreen && userId && <Button title="play" onPress={this.toggleHomeScreen} />}
         {!homeScreen && <Search userId={this.state.userId} toggleHomeScreen={this.toggleHomeScreen} />}
       </View>
     )

@@ -21,23 +21,51 @@ export default class Search extends Component {
 
   state = {
     gameFound: false,
+    queue: [],
   }
 
   componentDidMount() {
-    queueRef.once('value').then(queue => (queue.val() ? this.joinQueue(queue.val()) : this.createQueue()))
+    queueRef
+      .once('value')
+      .then(currentQueue => (currentQueue.val() ? this.joinQueue(currentQueue.val()) : this.createQueue()))
   }
 
   componentWillUnmount() {
     queueRef.once('value').then(queue => this.leaveQueue(queue.val()))
+    queueRef.off('value', this.monitorQueue)
   }
 
-  createQueue = () => queueRef.set([this.props.userId])
+  createQueue = () => {
+    this.setState({queue: [this.props.userId]})
+    queueRef.set([this.props.userId])
+    queueRef.on('value', this.monitorQueue)
+  }
 
-  joinQueue = currentQueue => queueRef.set(currentQueue.concat(this.props.userId))
+  joinQueue = (currentQueue) => {
+    console.log('GNIDA', currentQueue)
+    // this.setState({queue})
+    const {userId} = this.props
+    const clearedQueue = currentQueue.filter(user => user !== this.props.userId)
+    const queue = clearedQueue.concat(userId)
+    queueRef.set(queue)
+    queueRef.on('value', this.monitorQueue)
+  }
 
   leaveQueue = (currentQueue = []) => {
     const newQueue = currentQueue.filter(user => user !== this.props.userId)
     queueRef.set(newQueue)
+  }
+
+  monitorQueue = () =>
+    queueRef
+      .once('value')
+      .then(queue =>
+        this.setState({queue: queue.val()}, () =>
+          queueRef.onDisconnect().set(this.state.queue.filter(user => user !== this.props.userId))))
+
+  startGame = () => {
+    // get gameId
+    this.setState({gameFound: true})
   }
 
   render() {
