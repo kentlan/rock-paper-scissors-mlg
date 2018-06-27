@@ -18,6 +18,8 @@ export const provider = new firebase.auth.FacebookAuthProvider()
 export const storage = firebase.storage()
 
 export const queueRef = database.ref('/queue/')
+export const gamesRef = database.ref('/games/')
+export const userListRef = database.ref('/userList/')
 
 export const signIn = () =>
   auth.signInAnonymously().catch(error => console.error(error))
