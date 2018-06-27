@@ -22,6 +22,8 @@ const styles = StyleSheet.create({
   },
 })
 
+const MOVES = ['rock', 'paper', 'scissors']
+
 export default class Game extends Component {
   static propTypes = {
     userId: PropTypes.string.isRequired,
@@ -51,17 +53,16 @@ export default class Game extends Component {
     gamesRef.child(gameId).off('value')
   }
 
-  getScores = ({score}, message = this.state.message) => {
+  getScores = ({score}, newState = {}) => {
     const {userId} = this.props
     const opponentId = Object.keys(score).filter(id => id !== userId)[0]
     const userScore = score[userId]
     const opponentScore = score[opponentId]
-    this.setState({
+    this.setState(Object.assign(newState, {
       userScore,
       opponentScore,
-      message,
       opponentId,
-    })
+    }))
   }
 
   play = (item) => {
@@ -100,6 +101,8 @@ export default class Game extends Component {
 
     gamesRef.child(gameId).off('value')
 
+    const opponentMove = gameStats.moves[opponentId]
+
     const getWinner = () => {
       if (winnerId) {
         const newScore = Object.assign(gameStats.score, {
@@ -108,15 +111,15 @@ export default class Game extends Component {
         const newGameStats = Object.assign(gameStats, {
           score: newScore,
         })
-        gamesRef
+        gamesRef.child(gameId).set(newGameStats)
+
+        return gamesRef
           .child(gameId)
           .once('value')
-          .then(gs => this.getScores(gs.val(), message))
-
-        return gamesRef.child(gameId).set(newGameStats)
+          .then(gs => this.getScores(gs.val(), {message, opponentMove, activeItem: null}))
       }
 
-      return this.setState({message})
+      return this.setState({message, activeItem: null, opponentMove})
     }
     getWinner()
 
@@ -137,16 +140,11 @@ export default class Game extends Component {
   }
 
   renderMoves = () => {
-    const moves = ['rock', 'paper', 'scissors']
     const {activeItem, moveItem} = styles
 
-    return moves.map((title, index) => (
+    return MOVES.map((title, index) => (
       <Text
-        style={
-          this.state.activeItem === index
-            ? [activeItem, moveItem]
-            : moveItem
-          }
+        style={this.state.activeItem === index ? [activeItem, moveItem] : moveItem}
         key={title}
         onPress={() => this.play(index)}
       >
@@ -156,11 +154,14 @@ export default class Game extends Component {
   }
 
   render() {
-    const {userScore, opponentScore, message} = this.state
+    const {
+      userScore, opponentScore, message, opponentMove,
+    } = this.state
     return (
       <View style={styles.container}>
         <Button title="exit" onPress={this.exitGame} />
         <Text style={styles.result}>{message}</Text>
+        {opponentMove !== null && <Text>btw, opponent played {MOVES[opponentMove]}</Text>}
         <Text>U: {userScore}</Text>
         <Text>EN3MY: {opponentScore}</Text>
         {this.renderMoves()}
