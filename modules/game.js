@@ -42,7 +42,7 @@ export default class Game extends Component {
       .once('value')
       .then(gameStats => this.getScores(gameStats.val()))
 
-    gamesRef.on('child_removed', this.exitGame)
+    gamesRef.child(gameId).onDisconnect().set(null)
   }
 
   componentWillUnmount() {
@@ -63,70 +63,64 @@ export default class Game extends Component {
       opponentScore,
       opponentId,
     }))
+    userListRef.child(userId).onDisconnect().set(null)
+    userListRef.child(opponentId).onDisconnect().set(null)
   }
 
   play = (item) => {
     this.setState({
       activeItem: item,
     })
+
     gamesRef
       .child(this.props.gameId)
       .once('value')
-      .then(games => this.makeAMove(games.val(), item))
+      .then(gameStatsSnapShot => this.makeMove(gameStatsSnapShot.val(), item))
   }
 
-  makeAMove = (gameStats, item) => {
+  makeMove = (gameStats, item) => {
     const {gameId, userId} = this.props
-    const newMoves = Object.assign(gameStats.moves || {}, {
-      [userId]: item,
-    })
-    const newGameStats = Object.assign(gameStats, {
-      moves: newMoves,
-    })
-    gamesRef.child(gameId).set(newGameStats)
+
+    gamesRef.child(`${gameId}/moves`).update({[userId]: item})
 
     gamesRef
-      .child(gameId)
+      .child(`${gameId}/moves`)
       .on(
         'value',
-        updatedGameStats =>
-          Object.keys(updatedGameStats.val().moves).length > 1 && this.updateScore(updatedGameStats.val()),
+        movesSnapshot =>
+          movesSnapshot.val() && Object.keys(movesSnapshot.val()).length > 1 && this.updateScore(movesSnapshot.val()),
       )
   }
 
-  updateScore = (gameStats) => {
+  updateScore = (moves) => {
     const {gameId, userId} = this.props
-    const {opponentId} = this.state
-    const {winnerId, message} = calculateWinner(gameStats.moves, userId, opponentId)
+    const {opponentId, userScore, opponentScore} = this.state
 
-    gamesRef.child(gameId).off('value')
+    const {winnerId, message} = calculateWinner(moves, userId, opponentId)
 
-    const opponentMove = gameStats.moves[opponentId]
+    gamesRef.child(`${gameId}/moves`).off('value')
+
+    const opponentMove = moves[opponentId]
 
     const getWinner = () => {
       if (winnerId) {
-        const newScore = Object.assign(gameStats.score, {
-          [winnerId]: gameStats.score[winnerId] + 1,
-        })
-        const newGameStats = Object.assign(gameStats, {
-          score: newScore,
-        })
-        gamesRef.child(gameId).set(newGameStats)
+        const modifiedScore = winnerId === userId ? userScore + 1 : opponentScore + 1
+        const newScore = {
+          [winnerId]: modifiedScore,
+        }
+        gamesRef.child(`${gameId}/score`).update(newScore)
 
         return gamesRef
           .child(gameId)
           .once('value')
-          .then(gs => this.getScores(gs.val(), {message, opponentMove, activeItem: null}))
+          .then(gameStatsSnapShot => this.getScores(gameStatsSnapShot.val(), {message, opponentMove, activeItem: null}))
       }
 
       return this.setState({message, activeItem: null, opponentMove})
     }
     getWinner()
 
-    gamesRef
-      .child(gameId)
-      .child('moves')
-      .set(null)
+    gamesRef.child(`${gameId}/moves`).set(null)
   }
 
   exitGame = () => {

@@ -21,32 +21,29 @@ export default class Search extends Component {
 
   state = {
     gameId: false,
-    queue: [],
   }
 
   componentDidMount() {
-    queueRef
-      .once('value')
-      .then(currentQueue => (currentQueue.val() ? this.joinQueue(currentQueue.val()) : this.createQueue()))
+    this.joinQueue()
   }
 
   componentWillUnmount() {
-    queueRef.once('value').then(queue => this.leaveQueue(queue.val()))
-    queueRef.off('value', this.monitorQueue)
+    queueRef.child(this.state.userQueueKey).remove()
+    userListRef.off('value')
+    queueRef.off('value')
   }
 
-  createQueue = () => {
-    this.setState({queue: [this.props.userId]})
-    queueRef.set([this.props.userId])
-    queueRef.on('value', this.monitorQueue)
-  }
+  joinQueue = () => {
+    const userQueueKey = queueRef.push(this.props.userId).key
+    this.setState({userQueueKey})
+    this.monitorQueue(userQueueKey)
 
-  joinQueue = (currentQueue) => {
-    const {userId} = this.props
-    const clearedQueue = currentQueue.filter(user => user !== this.props.userId)
-    const queue = clearedQueue.concat(userId)
-    queueRef.set(queue)
-    queueRef.on('value', this.monitorQueue)
+    queueRef.on(
+      'value',
+      queueSnapshot =>
+        this.setState({opponentFound: Object.keys(queueSnapshot.val() || {}).length > 1}),
+    )
+    userListRef.on('value', this.checkForGame)
   }
 
   leaveQueue = (currentQueue) => {
@@ -56,25 +53,26 @@ export default class Search extends Component {
     }
   }
 
-  checkForGame = userList => userList[this.props.userId] && this.startGame(userList[this.props.userId])
-
-  monitorQueue = () => {
-    queueRef
-      .once('value')
-      .then(queue =>
-        this.setState(
-          {queue: queue.val()},
-          () =>
-            this.state.queue &&
-            queueRef.onDisconnect().set(this.state.queue.filter(user => user !== this.props.userId)),
-        ))
-    userListRef.once('value').then(userList => userList.val() && this.checkForGame(userList.val()))
+  checkForGame = (userList) => {
+    const userListValue = userList.val()
+    const {userId} = this.props
+    return userListValue && this.startGame(userListValue[userId])
   }
-  startGame = gameId => this.setState({gameId})
+
+  monitorQueue = userQueueKey =>
+    queueRef
+      .child(userQueueKey)
+      .onDisconnect()
+      .remove()
+
+  startGame = (gameId) => {
+    queueRef.off('value')
+    this.setState({gameId})
+  }
 
   render() {
     const {toggleHomeScreen, userId} = this.props
-    const {gameId} = this.state
+    const {gameId, opponentFound} = this.state
     return (
       <View style={styles.container}>
         {gameId ? (
@@ -82,7 +80,7 @@ export default class Search extends Component {
         ) : (
           <View>
             <Text>Searching for the opponents, mr {userId}</Text>
-            <Button title="cancel" onPress={toggleHomeScreen} />
+            {opponentFound ? <Text>Opponont Found! Waiting for server...</Text> : <Button title="cancel" onPress={toggleHomeScreen} />}
           </View>
         )}
       </View>
